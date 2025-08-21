@@ -63,29 +63,37 @@ const FoodLog = () => {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Mock nutrition data based on common foods
+    // Mock nutrition data per unit
     const mockNutritionData: { [key: string]: any } = {
       'egg': { calories: 78, protein: 6, carbs: 1, fat: 5 },
-      'rice': { calories: 130, protein: 3, carbs: 28, fat: 0.3 },
-      'chicken': { calories: 165, protein: 31, carbs: 0, fat: 3.6 },
+      'rice': { calories: 130, protein: 3, carbs: 28, fat: 0.3 }, // per cup
+      'chicken': { calories: 165, protein: 31, carbs: 0, fat: 3.6 }, // per 100g
       'banana': { calories: 89, protein: 1, carbs: 23, fat: 0.3 },
-      'bread': { calories: 79, protein: 3, carbs: 14, fat: 1 }
+      'bread': { calories: 79, protein: 3, carbs: 14, fat: 1 } // per slice
     };
 
     let totalNutrition = { calories: 0, protein: 0, carbs: 0, fat: 0 };
     
-    // Simple parsing logic for demo
-    const words = foodText.toLowerCase().split(/\s+/);
-    words.forEach(word => {
-      Object.keys(mockNutritionData).forEach(food => {
-        if (word.includes(food)) {
-          const nutrition = mockNutritionData[food];
-          totalNutrition.calories += nutrition.calories;
-          totalNutrition.protein += nutrition.protein;
-          totalNutrition.carbs += nutrition.carbs;
-          totalNutrition.fat += nutrition.fat;
-        }
-      });
+    // Enhanced parsing logic to handle quantities
+    const text = foodText.toLowerCase();
+    const words = text.split(/\s+/);
+    
+    // Extract numbers and food items
+    Object.keys(mockNutritionData).forEach(food => {
+      const foodRegex = new RegExp(`\\b\\d*\\s*\\w*\\s*${food}s?\\b`, 'i');
+      const match = text.match(foodRegex);
+      
+      if (match) {
+        // Extract quantity from the match
+        const quantityMatch = match[0].match(/\b(\d+(?:\.\d+)?)\b/);
+        const quantity = quantityMatch ? parseFloat(quantityMatch[1]) : 1;
+        
+        const nutrition = mockNutritionData[food];
+        totalNutrition.calories += nutrition.calories * quantity;
+        totalNutrition.protein += nutrition.protein * quantity;
+        totalNutrition.carbs += nutrition.carbs * quantity;
+        totalNutrition.fat += nutrition.fat * quantity;
+      }
     });
 
     // If no matches found, provide default values
