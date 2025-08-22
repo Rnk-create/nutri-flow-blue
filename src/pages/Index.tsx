@@ -1,11 +1,108 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Calendar, BarChart3, Target, TrendingUp, Award, ArrowRight } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import heroImage from '@/assets/nutrition-hero.jpg';
 
+interface WeeklyData {
+  day: string;
+  date: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+interface WeeklyStats {
+  avgCalories: number;
+  avgProtein: number;
+  avgCarbs: number;
+  avgFat: number;
+  totalDaysLogged: number;
+}
+
 const Index = () => {
+  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
+
+  useEffect(() => {
+    loadWeeklyData();
+  }, []);
+
+  const loadWeeklyData = () => {
+    const data: WeeklyData[] = [];
+    const today = new Date();
+    
+    // Get last 7 days of data
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      // Load data from localStorage
+      const savedEntries = localStorage.getItem(`foodlog_${dateStr}`);
+      let dayTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+      
+      if (savedEntries) {
+        const entries = JSON.parse(savedEntries);
+        dayTotals = entries.reduce(
+          (acc: any, entry: any) => ({
+            calories: acc.calories + entry.calories,
+            protein: acc.protein + entry.protein,
+            carbs: acc.carbs + entry.carbs,
+            fat: acc.fat + entry.fat
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        );
+      }
+
+      data.push({
+        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        date: dateStr,
+        ...dayTotals
+      });
+    }
+
+    setWeeklyData(data);
+    calculateWeeklyStats(data);
+  };
+
+  const calculateWeeklyStats = (data: WeeklyData[]) => {
+    const daysWithData = data.filter(day => day.calories > 0);
+    const totalDaysLogged = daysWithData.length;
+
+    if (totalDaysLogged === 0) {
+      setWeeklyStats({
+        avgCalories: 0,
+        avgProtein: 0,
+        avgCarbs: 0,
+        avgFat: 0,
+        totalDaysLogged: 0
+      });
+      return;
+    }
+
+    const totals = daysWithData.reduce(
+      (acc, day) => ({
+        calories: acc.calories + day.calories,
+        protein: acc.protein + day.protein,
+        carbs: acc.carbs + day.carbs,
+        fat: acc.fat + day.fat
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+
+    setWeeklyStats({
+      avgCalories: Math.round(totals.calories / totalDaysLogged),
+      avgProtein: Math.round(totals.protein / totalDaysLogged),
+      avgCarbs: Math.round(totals.carbs / totalDaysLogged),
+      avgFat: Math.round(totals.fat / totalDaysLogged),
+      totalDaysLogged
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -66,7 +163,7 @@ const Index = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Feature 1 */}
-            <Card className="p-8 text-center shadow-medium hover:shadow-large transition-shadow bg-card-gradient">
+            <Card className="p-8 text-center shadow-soft hover:shadow-medium transition-all duration-300 bg-white/40 backdrop-blur-sm border border-white/20 hover:bg-white/60">
               <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
                 <Calendar className="w-8 h-8 text-primary" />
               </div>
@@ -80,7 +177,7 @@ const Index = () => {
             </Card>
 
             {/* Feature 2 */}
-            <Card className="p-8 text-center shadow-medium hover:shadow-large transition-shadow bg-card-gradient">
+            <Card className="p-8 text-center shadow-soft hover:shadow-medium transition-all duration-300 bg-white/40 backdrop-blur-sm border border-white/20 hover:bg-white/60">
               <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-6">
                 <Target className="w-8 h-8 text-success" />
               </div>
@@ -94,7 +191,7 @@ const Index = () => {
             </Card>
 
             {/* Feature 3 */}
-            <Card className="p-8 text-center shadow-medium hover:shadow-large transition-shadow bg-card-gradient">
+            <Card className="p-8 text-center shadow-soft hover:shadow-medium transition-all duration-300 bg-white/40 backdrop-blur-sm border border-white/20 hover:bg-white/60">
               <div className="w-16 h-16 rounded-full bg-nutrition-carbs/20 flex items-center justify-center mx-auto mb-6">
                 <TrendingUp className="w-8 h-8 text-nutrition-carbs" />
               </div>
@@ -106,6 +203,165 @@ const Index = () => {
                 trends, and areas for improvement over time.
               </p>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Weekly Dashboard Section */}
+      <section className="py-20 bg-gradient-to-br from-primary/5 to-background">
+        <div className="container max-w-6xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Your Weekly Progress
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Track your nutrition journey with real-time insights and beautiful analytics
+            </p>
+          </div>
+
+          {/* Weekly Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card className="p-6 shadow-soft bg-white/30 backdrop-blur-md border border-white/20 hover:bg-white/40 transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Avg Daily Calories</p>
+                  <p className="text-2xl font-bold text-nutrition-calories">
+                    {weeklyStats?.avgCalories || 0}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-nutrition-calories/20 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-nutrition-calories" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 shadow-soft bg-white/30 backdrop-blur-md border border-white/20 hover:bg-white/40 transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Avg Protein</p>
+                  <p className="text-2xl font-bold text-nutrition-protein">
+                    {weeklyStats?.avgProtein || 0}g
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-nutrition-protein/20 flex items-center justify-center">
+                  <Award className="w-6 h-6 text-nutrition-protein" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 shadow-soft bg-white/30 backdrop-blur-md border border-white/20 hover:bg-white/40 transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Avg Carbs</p>
+                  <p className="text-2xl font-bold text-nutrition-carbs">
+                    {weeklyStats?.avgCarbs || 0}g
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-nutrition-carbs/20 flex items-center justify-center">
+                  <BarChart3 className="w-6 h-6 text-nutrition-carbs" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 shadow-soft bg-white/30 backdrop-blur-md border border-white/20 hover:bg-white/40 transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Days Logged</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {weeklyStats?.totalDaysLogged || 0}/7
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Weekly Chart */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <Card className="p-6 shadow-medium bg-white/40 backdrop-blur-md border border-white/20">
+                <h3 className="text-lg font-semibold mb-4 text-foreground flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  7-Day Calorie Trend
+                </h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={weeklyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="day" 
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          backdropFilter: 'blur(10px)'
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="calories" 
+                        stroke="hsl(var(--calories))" 
+                        strokeWidth={3}
+                        dot={{ fill: 'hsl(var(--calories))', strokeWidth: 2, r: 5 }}
+                        activeDot={{ r: 7, stroke: 'hsl(var(--calories))', strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="space-y-4">
+              <Card className="p-6 shadow-soft bg-white/30 backdrop-blur-md border border-white/20">
+                <h3 className="text-lg font-semibold mb-4 text-foreground">Quick Actions</h3>
+                <div className="space-y-3">
+                  <Link to="/food-log" className="block">
+                    <Button 
+                      className="w-full justify-start bg-primary hover:bg-primary-dark text-white"
+                      size="sm"
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Log Today's Food
+                    </Button>
+                  </Link>
+                  <Link to="/weekly-dashboard" className="block">
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start border-primary/30 hover:bg-primary/10"
+                      size="sm"
+                    >
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      Full Dashboard
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+
+              <Card className="p-4 shadow-soft bg-gradient-to-br from-success/10 to-primary/10 backdrop-blur-md border border-white/20">
+                <div className="text-center">
+                  <Award className="w-8 h-8 text-success mx-auto mb-2" />
+                  <p className="text-sm font-medium text-foreground">
+                    {weeklyStats?.totalDaysLogged === 7 ? 'Perfect Week!' : 
+                     weeklyStats && weeklyStats.totalDaysLogged >= 5 ? 'Great Progress!' : 
+                     'Keep Logging!'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {weeklyStats?.totalDaysLogged || 0} days logged this week
+                  </p>
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
       </section>
