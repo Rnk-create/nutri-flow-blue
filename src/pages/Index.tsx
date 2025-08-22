@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Calendar, BarChart3, Target, TrendingUp, Award, ArrowRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import heroImage from '@/assets/nutrition-hero.jpg';
+import BMRCalculator from '@/components/BMRCalculator';
 
 interface WeeklyData {
   day: string;
@@ -206,6 +207,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* BMR Calculator Section */}
+      <BMRCalculator />
 
       {/* Weekly Dashboard Section */}
       <section className="py-20 bg-gradient-to-br from-primary/5 to-background">
